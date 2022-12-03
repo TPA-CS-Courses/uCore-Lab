@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.toml": "toml",
+        "kdebug.h": "c",
+        "kmonitor.h": "c",
+        "pmm.h": "c",
+        "intr.h": "c",
+        "clock.h": "c",
+        "string.h": "c"
+    }
+}

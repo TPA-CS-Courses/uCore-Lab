@@ -224,7 +224,7 @@ qemu: $(UCOREIMG)
 # TERMINAL        :=gnome-terminal
 debug: $(UCOREIMG)
 	# $(V)$(QEMU) -S -s -parallel stdio -hda $< -serial null &
-	$(V)$(QEMU) -no-reboot -S -s -nographic -hda bin/ucore.img   
+	$(V)$(QEMU) -no-reboot -S -s -nographic -hda bin/ucore.img
 	# $(V)sleep 2
 	# $(V)$(TERMINAL) -e "gdb -q -tui -x tools/gdbinit"
 	
