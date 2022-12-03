@@ -1,0 +1,25 @@
+@startuml
+
+class pmm {
++ void pmm_init(void);
+- static struct taskstate ts
+- static struct segdesc gdt[]
+- static struct pseudodesc gdt_pd
++ uint8_t stack0[1024];
+- static void gdt_init(void)
+- static inline void lgdt(struct pseudodesc *pd)
+}
+
+class trap {
+    
++ void idt_init(void);
++ void print_trapframe(struct trapframe *tf);
++ void print_regs(struct pushregs *regs);
++ bool trap_in_kernel(struct trapframe *tf);
++ void trap(struct trapframe *tf);
+- static void trap_dispatch(struct trapframe *tf)
+- static const char *IA32flags[]
+- static struct gatedesc idt[256]
+- static struct pseudodesc idt_pd
+}
+@enduml                                 

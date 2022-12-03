@@ -302,5 +302,37 @@ print_stackframe(void) {
       *           NOTICE: the calling funciton's return addr eip  = ss:[ebp+4]
       *                   the calling funciton's ebp = ss:[ebp]
       */
+    /*
+        ebp：寄存器存放当前线程的栈底指针
+        eip：寄存器存放下一个CPU指令存放的内存地址，当CPU执行完当前的指令后，从EIP寄存器中读取下一条指令的内存地址，然后继续执行。
+
+        +|  栈底方向        | 高位地址
+        |    ...        |
+        |    ...        |
+        |  参数3        |
+        |  参数2        |
+        |  参数1        |
+        |  返回地址        |
+        |  上一层[ebp]    | <-------- [ebp]
+        |  局部变量        |  低位地址
+    
+        注意，eip，ebp都是虚拟地址
+        处理这种虚拟地址方式就是将其强转为(uint32_t *)
+        想要取这个地址的值，一方面可以用取值符号取得，如*addr，另一方面推荐使用数组的方式，addr[0]
+    */
+    uint32_t ebp = read_ebp();
+    uint32_t eip = read_eip();
+    uint32_t i, j;
+    for ( i = 0; i < STACKFRAME_DEPTH && ebp; i++) {
+        cprintf("ebp:0x%08x eip:0x%08x args:", ebp, eip);
+        uint32_t *args = (uint32_t *)ebp + 2;
+        for (j = 0; j < 4; j ++) {
+            cprintf("0x%08x ", args[j]);
+        }
+        cprintf("\n");
+        print_debuginfo(eip - 1);
+        eip = ((uint32_t *)ebp)[1];
+        ebp = ((uint32_t *)ebp)[0];
+    }
 }
 

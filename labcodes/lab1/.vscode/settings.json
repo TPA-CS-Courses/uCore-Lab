@@ -6,6 +6,13 @@
         "pmm.h": "c",
         "intr.h": "c",
         "clock.h": "c",
-        "string.h": "c"
-    }
+        "string.h": "c",
+        "defs.h": "c",
+        "assert.h": "c",
+        "trap.h": "c"
+    },
+    // "gnuGlobal.globalExecutable": "/usr/bin/global",
+    // "gnuGlobal.gtagsExecutable": "/usr/bin/gtags",
+    // // 指明生成的符号表存放在哪个位置
+    // "gnuGlobal.objDirPrefix": "/home/tpa/.global"
 }
