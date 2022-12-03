@@ -1,0 +1,1 @@
+ qemu -S -s -hda bin/ucore.img  -nographic 

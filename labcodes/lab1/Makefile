@@ -207,24 +207,35 @@ TARGETS: $(TARGETS)
 .DEFAULT_GOAL := TARGETS
 
 .PHONY: qemu qemu-nox debug debug-nox
-qemu-mon: $(UCOREIMG)
-	$(V)$(QEMU)  -no-reboot -monitor stdio -hda $< -serial null
+# qemu-mon: $(UCOREIMG)
+# 	# $(V)$(QEMU)  -no-reboot -monitor -nographic stdio -hda  $< -serial null
+# 	$(V)$(QEMU)  -no-reboot -monitor -nographic  -hda  
+
+# 基本上就用make qemu 和 make qemu-gdb就行
+# make qemu 作用是用qemu跑OS
+# make qemu-gdb 作用是暂停OS等待gdb链接
 qemu: $(UCOREIMG)
-	$(V)$(QEMU) -no-reboot -parallel stdio -hda $< -serial null
-log: $(UCOREIMG)
-	$(V)$(QEMU) -no-reboot -d int,cpu_reset  -D q.log -parallel stdio -hda $< -serial null
-qemu-nox: $(UCOREIMG)
-	$(V)$(QEMU)   -no-reboot -serial mon:stdio -hda $< -nographic
-TERMINAL        :=gnome-terminal
+	# $(V)$(QEMU) -no-reboot -parallel -nographic stdio -hda  $< -serial null
+	$(V)$(QEMU) -no-reboot  -nographic -hda  bin/ucore.img
+# log: $(UCOREIMG)
+# 	$(V)$(QEMU) -no-reboot -d int,cpu_reset  -D q.log -parallel stdio -hda $< -serial null
+# qemu-nox: $(UCOREIMG)
+# 	$(V)$(QEMU)   -no-reboot -serial mon:stdio -hda $< -nographic
+# TERMINAL        :=gnome-terminal
 debug: $(UCOREIMG)
-	$(V)$(QEMU) -S -s -parallel stdio -hda $< -serial null &
-	$(V)sleep 2
-	$(V)$(TERMINAL) -e "gdb -q -tui -x tools/gdbinit"
+	# $(V)$(QEMU) -S -s -parallel stdio -hda $< -serial null &
+	$(V)$(QEMU) -no-reboot -S -s -nographic -hda bin/ucore.img   
+	# $(V)sleep 2
+	# $(V)$(TERMINAL) -e "gdb -q -tui -x tools/gdbinit"
 	
-debug-nox: $(UCOREIMG)
-	$(V)$(QEMU) -S -s -serial mon:stdio -hda $< -nographic &
-	$(V)sleep 2
-	$(V)$(TERMINAL) -e "gdb -q -x tools/gdbinit"
+gdb: $(UCOREIMG)
+	gdb -q -tui -x tools/gdbinit
+	
+
+# debug-nox: $(UCOREIMG)
+# 	$(V)$(QEMU) -S -s -serial mon:stdio -hda $< -nographic &
+# 	$(V)sleep 2
+# 	$(V)$(TERMINAL) -e "gdb -q -x tools/gdbinit"
 
 .PHONY: grade touch
 
