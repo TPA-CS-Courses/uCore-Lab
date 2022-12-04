@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.toml": "toml",
+        "default_pmm.h": "c",
+        "memlayout.h": "c"
+    }
+}
