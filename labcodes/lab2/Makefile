@@ -236,9 +236,9 @@ qemu-mon: $(UCOREIMG)
 qemu: $(UCOREIMG)
 	$(V)$(QEMU)  -no-reboot -parallel stdio $(QEMUOPTS) -serial null
 
-qemu-nox: targets
-	$(V)$(QEMU)  -no-reboot -serial mon:stdio $(QEMUOPTS) -nographic
-
+qemu-nox: $(UCOREIMG)
+	$(V)$(QEMU) -no-reboot -serial mon:stdio $(QEMUOPTS) -nographic
+	# qemu -append nokaslr -no-reboot -serial mon:stdio $(QEMUOPTS) -nographic
 TERMINAL := gnome-terminal
 
 debug: $(UCOREIMG)
@@ -247,7 +247,9 @@ debug: $(UCOREIMG)
 	$(V)$(TERMINAL) -e "$(GDB) -q -x tools/gdbinit"
 
 debug-nox: $(UCOREIMG)
-	$(V)$(QEMU) -S -s -serial mon:stdio $(QEMUOPTS) -nographic 
+	$(V)$(QEMU) -S -s -serial mon:stdio $(QEMUOPTS) -nographic
+	 
+	# $(V)$(QEMU) -no-reboot -S -s -nographic -hda bin/ucore.img
 	# $(V)sleep 2
 	# $(V)$(TERMINAL) -e "$(GDB) -q -x tools/gdbinit"
 

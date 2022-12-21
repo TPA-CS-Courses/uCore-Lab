@@ -28,7 +28,7 @@ kern_init(void) {
 
     grade_backtrace();
 
-    pmm_init();                 // init physical memory management
+    // pmm_init();                 // init physical memory management
 
     pic_init();                 // init interrupt controller
     idt_init();                 // init interrupt descriptor table

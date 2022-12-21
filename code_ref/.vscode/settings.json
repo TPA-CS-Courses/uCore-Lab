@@ -1,0 +1,21 @@
+{
+    "files.associations": {
+        "*.toml": "toml",
+        "swap.h": "c",
+        "default_pmm.h": "c",
+        "pmm.h": "c",
+        "memlayout.h": "c",
+        "string.h": "c",
+        "vmm.h": "c",
+        "error.h": "c",
+        "defs.h": "c",
+        "mmu.h": "c",
+        "proc.h": "c",
+        "sched.h": "c",
+        "sync.h": "c",
+        "x86.h": "c",
+        "assert.h": "c",
+        "file.h": "c",
+        "vfs.h": "c"
+    }
+}

@@ -296,26 +296,27 @@ pmm_init(void) {
     page_init();
 
     //use pmm->check to verify the correctness of the alloc/free function in a pmm
+    // cprintf("before1\n");
     check_alloc_page();
-
+    // cprintf("after1\n");
     // create boot_pgdir, an initial page directory(Page Directory Table, PDT)
     boot_pgdir = boot_alloc_page();
     memset(boot_pgdir, 0, PGSIZE);
     boot_cr3 = PADDR(boot_pgdir);
-
+    // cprintf("before2\n");
     check_pgdir();
-
+    // cprintf("after2\n");
     static_assert(KERNBASE % PTSIZE == 0 && KERNTOP % PTSIZE == 0);
 
     // recursively insert boot_pgdir in itself
     // to form a virtual page table at virtual address VPT
     boot_pgdir[PDX(VPT)] = PADDR(boot_pgdir) | PTE_P | PTE_W;
-
+    cprintf("before333\n");
     // map all physical memory to linear memory with base linear addr KERNBASE
     //linear_addr KERNBASE~KERNBASE+KMEMSIZE = phy_addr 0~KMEMSIZE
     //But shouldn't use this map until enable_paging() & gdt_init() finished.
     boot_map_segment(boot_pgdir, KERNBASE, KMEMSIZE, 0, PTE_W);
-
+    cprintf("before666\n");
     //temporary map: 
     //virtual_addr 3G~3G+4M = linear_addr 0~4M = linear_addr 3G~3G+4M = phy_addr 0~4M     
     boot_pgdir[0] = boot_pgdir[PDX(KERNBASE)];
@@ -329,11 +330,11 @@ pmm_init(void) {
 
     //disable the map of virtual_addr 0~4M
     boot_pgdir[0] = 0;
-
+    cprintf("before3\n");
     //now the basic virtual memory map(see memalyout.h) is established.
     //check the correctness of the basic virtual memory map.
     check_boot_pgdir();
-
+    cprintf("after3\n");
     print_pgdir();
 
 }
@@ -380,6 +381,44 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     }
     return NULL;          // (8) return page table entry
 #endif
+
+    pde_t *pdep = NULL;
+    pte_t *ptdir = NULL;
+    pte_t *ptep = NULL;
+    pdep = &pgdir[PDX(la)];
+    // cprintf("get_pte:pdep = %p, *pdep = %p\n", pdep, *pdep);
+    if (!(*pdep & PTE_P)) {
+        if (create) {
+            // 分配一个页，并修改页目录项
+            // *pdep = 
+            struct Page *page = alloc_page();
+            set_page_ref(page, 1);
+            uintptr_t pa = page2pa(page); 
+            // memset()
+            uintptr_t va = KADDR(pa);
+            ptdir = va;
+            *pdep = pa | PTE_USER;
+            memset(va, 0, PGSIZE);
+        } else {
+            return NULL;
+        }
+    } else {
+        ptdir = KADDR(PDE_ADDR(*pdep));
+    }
+    ptep = &ptdir[PTX(la)];
+    // cprintf("get_pte:ptep = %p, *ptep = %p\n", ptep, *ptep);
+    if (!(*ptep & PTE_P)) {
+        if (create) {
+            struct Page *page = alloc_page();
+            set_page_ref(page, 1);
+            uintptr_t pa = page2pa(page); 
+            uintptr_t va = KADDR(pa);
+            *ptep = pa | PTE_USER;
+            memset(va, 0, PGSIZE);
+        } 
+    }
+    // cprintf("get_pte:ptep = %p, *ptep = %p\n", ptep, *ptep);
+    return ptep;
 }
 
 //get_page - get related Page struct for linear address la using PDT pgdir
@@ -425,6 +464,28 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
                                   //(6) flush tlb
     }
 #endif
+    // cprintf("no imple\n");
+    // cprintf("page_remove_pte: ptep = %p, *ptep = %p\n", ptep, *ptep);
+    if (ptep != get_pte(pgdir, la, 0)) {
+        // cprintf("no why\n");
+        return;
+    }
+    if ((*ptep) & PTE_P) {
+        // page就是la所映射的物理页
+        struct Page *page = pte2page(*ptep);
+        page_ref_dec(page);
+        // cprintf("page_remove_pte: ref = %d\n", page->ref);
+        if (page->ref == 0) {
+            // 
+            // pmm_manager->free_pages(page, 1)
+            // free(page);
+            // cprintf("free page!\n");
+            free_page(page);
+            // tlb_invalidate(pgdir, la);
+            *ptep = 0;
+        }
+    }
+    tlb_invalidate(pgdir, la);
 }
 
 //page_remove - free an Page which is related linear address la and has an validated pte
@@ -488,14 +549,17 @@ check_pgdir(void) {
 
     struct Page *p1, *p2;
     p1 = alloc_page();
+    cprintf("before remove4\n");    
     assert(page_insert(boot_pgdir, p1, 0x0, 0) == 0);
-
+    cprintf("before remove3\n");
     pte_t *ptep;
     assert((ptep = get_pte(boot_pgdir, 0x0, 0)) != NULL);
+    cprintf("before remove2\n");
     assert(pte2page(*ptep) == p1);
     assert(page_ref(p1) == 1);
 
     ptep = &((pte_t *)KADDR(PDE_ADDR(boot_pgdir[0])))[1];
+    cprintf("ptep == %p\n", ptep);
     assert(get_pte(boot_pgdir, PGSIZE, 0) == ptep);
 
     p2 = alloc_page();
@@ -512,7 +576,7 @@ check_pgdir(void) {
     assert((ptep = get_pte(boot_pgdir, PGSIZE, 0)) != NULL);
     assert(pte2page(*ptep) == p1);
     assert((*ptep & PTE_U) == 0);
-
+    cprintf("before remove\n");
     page_remove(boot_pgdir, 0x0);
     assert(page_ref(p1) == 1);
     assert(page_ref(p2) == 0);
