@@ -407,16 +407,16 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     }
     ptep = &ptdir[PTX(la)];
     // cprintf("get_pte:ptep = %p, *ptep = %p\n", ptep, *ptep);
-    if (!(*ptep & PTE_P)) {
-        if (create) {
-            struct Page *page = alloc_page();
-            set_page_ref(page, 1);
-            uintptr_t pa = page2pa(page); 
-            uintptr_t va = KADDR(pa);
-            *ptep = pa | PTE_USER;
-            memset(va, 0, PGSIZE);
-        } 
-    }
+    // if (!(*ptep & PTE_P)) {
+    //     if (create) {
+    //         struct Page *page = alloc_page();
+    //         set_page_ref(page, 1);
+    //         uintptr_t pa = page2pa(page); 
+    //         uintptr_t va = KADDR(pa);
+    //         *ptep = pa | PTE_USER;
+    //         memset(va, 0, PGSIZE);
+    //     } 
+    // }
     // cprintf("get_pte:ptep = %p, *ptep = %p\n", ptep, *ptep);
     return ptep;
 }
