@@ -164,8 +164,9 @@ check_vmm(void) {
     size_t nr_free_pages_store = nr_free_pages();
     
     check_vma_struct();
+    cprintf("before: check_pgfault()\n");
     check_pgfault();
-
+    cprintf("after: check_pgfault()\n");
     assert(nr_free_pages_store == nr_free_pages());
 
     cprintf("check_vmm() succeeded.\n");
@@ -246,15 +247,20 @@ check_pgfault(void) {
     struct mm_struct *mm = check_mm_struct;
     pde_t *pgdir = mm->pgdir = boot_pgdir;
     assert(pgdir[0] == 0);
-
+    // cprintf("pgdir = %p, pgdir[0] = %p\n", pgdir, pgdir[0]);
     struct vma_struct *vma = vma_create(0, PTSIZE, VM_WRITE);
+    
+    // cprintf("pgdir = %p, pgdir[0] = %p\n", pgdir, pgdir[0]);
     assert(vma != NULL);
-
     insert_vma_struct(mm, vma);
-
     uintptr_t addr = 0x100;
+    // cprintf("-----shit\n");
+    // *(char *)addr = 5;
+    // pte_t *ptep = get_pte(mm->pgdir, addr, 0);
+    // cprintf("ptep = %p, *ptep = %p\n", ptep, *ptep);
+    // assert(0);
     assert(find_vma(mm, addr) == vma);
-
+    cprintf("1\n");
     int i, sum = 0;
     for (i = 0; i < 100; i ++) {
         *(char *)(addr + i) = i;
@@ -263,10 +269,14 @@ check_pgfault(void) {
     for (i = 0; i < 100; i ++) {
         sum -= *(char *)(addr + i);
     }
+    cprintf("pgdir = %p, pgdir[0] = %p\n", pgdir, pgdir[0]);
     assert(sum == 0);
-
+    cprintf("2\n");
     page_remove(pgdir, ROUNDDOWN(addr, PGSIZE));
+    cprintf("3\n");
+    
     free_page(pde2page(pgdir[0]));
+    cprintf("4\n");
     pgdir[0] = 0;
 
     mm->pgdir = NULL;
@@ -306,7 +316,7 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
     int ret = -E_INVAL;
     //try to find a vma which include addr
     struct vma_struct *vma = find_vma(mm, addr);
-
+    cprintf("----------in do_pgfault\n");
     pgfault_num++;
     //If the addr is in the range of a mm's vma?
     if (vma == NULL || vma->vm_start > addr) {
@@ -347,6 +357,27 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
     ret = -E_NO_MEM;
 
     pte_t *ptep=NULL;
+    ptep = get_pte(mm->pgdir, addr, 1);
+    if (*ptep == 0) {
+        pgdir_alloc_page(mm->pgdir, addr, 0);
+    } else {
+        // 说明这个是个交换页
+        if (swap_init_ok) {
+            struct Page *page=NULL;
+            swap_in(mm, addr, &page);
+            page_insert(mm->pgdir, page, addr, 0);
+            swap_map_swappable(mm, addr, page, 0);
+            page->pra_vaddr = addr;
+            // swap_manager
+            // mm->
+        } else {
+            cprintf("no swap_init_ok but ptep is %x, failed\n",*ptep);
+            goto failed;
+        }
+
+    }
+    
+    // swap_in()
     /*LAB3 EXERCISE 1: YOUR CODE
     * Maybe you want help comment, BELOW comments can help you finish the code
     *

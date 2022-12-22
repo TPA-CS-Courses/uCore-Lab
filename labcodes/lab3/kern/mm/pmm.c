@@ -249,6 +249,12 @@ page_init(void) {
             }
         }
     }
+    // cprintf("npage = %d\n", npage);
+    // for (i = 0; i < npage; i ++) {
+    //     // SetPageReserved(pages + i);
+    //     // if (PageReserved(pages + i))
+    //     cprintf("PageReserved(%d) = %d\n", i, PageReserved(pages + i));
+    // }
 }
 
 static void
@@ -333,6 +339,7 @@ pmm_init(void) {
     //virtual_addr 3G~3G+4M = linear_addr 0~4M = linear_addr 3G~3G+4M = phy_addr 0~4M     
     boot_pgdir[0] = boot_pgdir[PDX(KERNBASE)];
 
+    // cprintf("boot_pgdir = %p, boot_pgdir[0] = %p\n", boot_pgdir, boot_pgdir[0]);
     enable_paging();
 
     //reload gdt(third time,the last time) to map all physical memory
@@ -348,7 +355,7 @@ pmm_init(void) {
     check_boot_pgdir();
 
     print_pgdir();
-
+    // cprintf("boot_pgdir = %p, boot_pgdir[0] = %p\n", boot_pgdir, boot_pgdir[0]);
 }
 
 //get_pte - get pte and return the kernel virtual address of this pte for la
@@ -393,11 +400,54 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     }
     return NULL;          // (8) return page table entry
 #endif
+    pde_t *pdep = NULL;
+    pte_t *ptdir = NULL;
+    pte_t *ptep = NULL;
+    pdep = &pgdir[PDX(la)];
+    if (la == 0x100) {
+        cprintf("get_pte:pdep = %p, *pdep = %p\n", pdep, *pdep);
+    
+    }
+    if (!(*pdep & PTE_P)) {
+        if (create) {
+            // 分配一个页，并修改页目录项
+            // *pdep = 
+            struct Page *page = alloc_page();
+            assert(page->flags == 0);
+            // page->flags = 0;
+            set_page_ref(page, 1);
+            uintptr_t pa = page2pa(page); 
+            // memset()
+            uintptr_t va = KADDR(pa);
+            ptdir = va;
+            *pdep = pa | PTE_USER;
+            memset(va, 0, PGSIZE);
+        } else {
+            return NULL;
+        }
+    } else {
+        ptdir = KADDR(PDE_ADDR(*pdep));
+    }
+    ptep = &ptdir[PTX(la)];
+    // cprintf("get_pte:ptep = %p, *ptep = %p\n", ptep, *ptep);
+    // if (!(*ptep & PTE_P)) {
+    //     if (create) {
+    //         struct Page *page = alloc_page();
+    //         set_page_ref(page, 1);
+    //         uintptr_t pa = page2pa(page); 
+    //         uintptr_t va = KADDR(pa);
+    //         *ptep = pa | PTE_USER;
+    //         memset(va, 0, PGSIZE);
+    //     } 
+    // }
+    // cprintf("get_pte:ptep = %p, *ptep = %p\n", ptep, *ptep);
+    return ptep;
 }
 
 //get_page - get related Page struct for linear address la using PDT pgdir
 struct Page *
 get_page(pde_t *pgdir, uintptr_t la, pte_t **ptep_store) {
+    // cprintf("get_page()\n");
     pte_t *ptep = get_pte(pgdir, la, 0);
     if (ptep_store != NULL) {
         *ptep_store = ptep;
@@ -438,6 +488,28 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
                                   //(6) flush tlb
     }
 #endif
+    // cprintf("no imple\n");
+    cprintf("page_remove_pte: ptep = %p, *ptep = %p\n", ptep, *ptep);
+    if (ptep != get_pte(pgdir, la, 0)) {
+        // cprintf("no why\n");
+        return;
+    }
+    if ((*ptep) & PTE_P) {
+        // page就是la所映射的物理页
+        struct Page *page = pte2page(*ptep);
+        page_ref_dec(page);
+        // cprintf("page_remove_pte: ref = %d\n", page->ref);
+        if (page->ref == 0) {
+            // 
+            // pmm_manager->free_pages(page, 1)
+            // free(page);
+            // cprintf("free page!\n");
+            free_page(page);
+            // tlb_invalidate(pgdir, la);
+            *ptep = 0;
+        }
+    }
+    tlb_invalidate(pgdir, la);
 }
 
 //page_remove - free an Page which is related linear address la and has an validated pte
@@ -568,18 +640,21 @@ static void
 check_boot_pgdir(void) {
     pte_t *ptep;
     int i;
+    cprintf("check_boot_pgdir:boot_pgdir = %p, boot_pgdir[0] = %p\n", boot_pgdir, boot_pgdir[0]);
     for (i = 0; i < npage; i += PGSIZE) {
         assert((ptep = get_pte(boot_pgdir, (uintptr_t)KADDR(i), 0)) != NULL);
         assert(PTE_ADDR(*ptep) == i);
     }
-
     assert(PDE_ADDR(boot_pgdir[PDX(VPT)]) == PADDR(boot_pgdir));
 
     assert(boot_pgdir[0] == 0);
 
     struct Page *p;
     p = alloc_page();
+
     assert(page_insert(boot_pgdir, p, 0x100, PTE_W) == 0);
+
+    // cprintf("check_boot_pgdir:boot_pgdir = %p, boot_pgdir[0] = %p\n", boot_pgdir, boot_pgdir[0]);
     assert(page_ref(p) == 1);
     assert(page_insert(boot_pgdir, p, 0x100 + PGSIZE, PTE_W) == 0);
     assert(page_ref(p) == 2);

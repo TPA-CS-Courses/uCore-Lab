@@ -64,7 +64,29 @@ default_init(void) {
     list_init(&free_list);
     nr_free = 0;
 }
-
+// 作用：将设置好的base，插入的free list 中（按地址顺序）
+// 
+static void insert_order_by_addr(struct Page *base) {
+    // my code
+    // page存的是地址小于base的
+    // 如果没有小于base的，那base就是第一个！
+    struct Page *page = NULL;
+    list_entry_t *le = &free_list;
+    while ((le = list_next(le)) != &free_list) {
+        struct Page *p = le2page(le, page_link);
+        if (p < base) {
+            page = p;
+        } else {
+            break;
+        }
+    }
+    if (page == NULL) {
+        // Insert the new element @elm *after* the element @listelm which
+        list_add(&free_list, &(base->page_link));
+    } else {
+        list_add(&page->page_link, &(base->page_link));
+    }
+}
 static void
 default_init_memmap(struct Page *base, size_t n) {
     assert(n > 0);
@@ -77,7 +99,8 @@ default_init_memmap(struct Page *base, size_t n) {
     base->property = n;
     SetPageProperty(base);
     nr_free += n;
-    list_add(&free_list, &(base->page_link));
+    // list_add(&free_list, &(base->page_link));
+    insert_order_by_addr(base);
 }
 
 static struct Page *
@@ -100,8 +123,9 @@ default_alloc_pages(size_t n) {
         if (page->property > n) {
             struct Page *p = page + n;
             p->property = page->property - n;
-            list_add(&free_list, &(p->page_link));
-    }
+            // list_add(&free_list, &(p->page_link));
+            insert_order_by_addr(p);
+        }
         nr_free -= n;
         ClearPageProperty(page);
     }
@@ -113,6 +137,7 @@ default_free_pages(struct Page *base, size_t n) {
     assert(n > 0);
     struct Page *p = base;
     for (; p != base + n; p ++) {
+        // cprintf("n: %d, PageReserved(p) = %d, PageProperty(p) = %d\n", n, PageReserved(p) ,PageProperty(p));
         assert(!PageReserved(p) && !PageProperty(p));
         p->flags = 0;
         set_page_ref(p, 0);
@@ -136,7 +161,8 @@ default_free_pages(struct Page *base, size_t n) {
         }
     }
     nr_free += n;
-    list_add(&free_list, &(base->page_link));
+    // list_add(&free_list, &(base->page_link));
+    insert_order_by_addr(base);
 }
 
 static size_t
