@@ -344,6 +344,29 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
     ret = -E_NO_MEM;
 
     pte_t *ptep=NULL;
+    ptep = get_pte(mm->pgdir, addr, 1);
+    if (*ptep == 0) {
+        struct Page *page = pgdir_alloc_page(mm->pgdir, addr, perm);
+        cprintf("in do pagefault: page = %p, addr = %p\n", page, page->pra_vaddr);
+    } else {
+        // 说明这个是个交换页
+        if (swap_init_ok) {
+            // cprintf("")
+            struct Page *page=NULL;
+            swap_in(mm, addr, &page);
+            page_insert(mm->pgdir, page, addr, perm);
+            page->pra_vaddr = addr;
+            cprintf("in do pagefault: page = %p, addr = %p\n", page, page->pra_vaddr);
+            swap_map_swappable(mm, addr, page, 0);
+
+            // swap_manager
+            // mm->
+        } else {
+            cprintf("no swap_init_ok but ptep is %x, failed\n",*ptep);
+            goto failed;
+        }
+
+    }
     /*LAB3 EXERCISE 1: YOUR CODE
     * Maybe you want help comment, BELOW comments can help you finish the code
     *
