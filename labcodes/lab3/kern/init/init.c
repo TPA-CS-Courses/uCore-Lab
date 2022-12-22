@@ -39,6 +39,7 @@ kern_init(void) {
     vmm_init();                 // init virtual memory management
 
     ide_init();                 // init ide devices
+    
     swap_init();                // init swap
 
     clock_init();               // init clock interrupt

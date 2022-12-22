@@ -30,6 +30,7 @@ static void check_swap(void);
 int
 swap_init(void)
 {
+     cprintf("swap_init(): 【start】\n");
      swapfs_init();
 
      if (!(1024 <= max_swap_offset && max_swap_offset < MAX_SWAP_OFFSET_LIMIT))
@@ -80,14 +81,17 @@ volatile unsigned int swap_out_num=0;
 int
 swap_out(struct mm_struct *mm, int n, int in_tick)
 {
+     cprintf("swap_out()\n");
      int i;
      for (i = 0; i != n; ++ i)
      {
           uintptr_t v;
           //struct Page **ptr_page=NULL;
           struct Page *page;
+          
           // cprintf("i %d, SWAP: call swap_out_victim\n",i);
           int r = sm->swap_out_victim(mm, &page, in_tick);
+         
           if (r != 0) {
                     cprintf("i %d, swap_out: call swap_out_victim failed\n",i);
                   break;
@@ -95,9 +99,10 @@ swap_out(struct mm_struct *mm, int n, int in_tick)
           //assert(!PageReserved(page));
 
           //cprintf("SWAP: choose victim page 0x%08x\n", page);
-          
           v=page->pra_vaddr; 
+          cprintf("v = %p, page = %p\n", v, page);
           pte_t *ptep = get_pte(mm->pgdir, v, 0);
+          cprintf("ptep = %p, *ptep = %p\n", ptep, *ptep);
           assert((*ptep & PTE_P) != 0);
 
           if (swapfs_write( (page->pra_vaddr/PGSIZE+1)<<8, page) != 0) {

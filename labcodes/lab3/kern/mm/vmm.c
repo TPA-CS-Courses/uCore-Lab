@@ -311,7 +311,7 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
     int ret = -E_INVAL;
     //try to find a vma which include addr
     struct vma_struct *vma = find_vma(mm, addr);
-    // cprintf("----------in do_pgfault\n");
+    cprintf("----------in do_pgfault\n");
     pgfault_num++;
     //If the addr is in the range of a mm's vma?
     if (vma == NULL || vma->vm_start > addr) {
@@ -354,15 +354,19 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
     pte_t *ptep=NULL;
     ptep = get_pte(mm->pgdir, addr, 1);
     if (*ptep == 0) {
-        pgdir_alloc_page(mm->pgdir, addr, perm);
+        struct Page *page = pgdir_alloc_page(mm->pgdir, addr, perm);
+        cprintf("in do pagefault: page = %p, addr = %p\n", page, page->pra_vaddr);
     } else {
         // 说明这个是个交换页
         if (swap_init_ok) {
+            // cprintf("")
             struct Page *page=NULL;
             swap_in(mm, addr, &page);
-            page_insert(mm->pgdir, page, addr, 0);
-            swap_map_swappable(mm, addr, page, 0);
+            page_insert(mm->pgdir, page, addr, perm);
             page->pra_vaddr = addr;
+            cprintf("in do pagefault: page = %p, addr = %p\n", page, page->pra_vaddr);
+            swap_map_swappable(mm, addr, page, 0);
+
             // swap_manager
             // mm->
         } else {
