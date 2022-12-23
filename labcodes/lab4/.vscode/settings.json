@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.toml": "toml",
+        "error.h": "c",
+        "stdio.h": "c",
+        "trap.h": "c",
+        "vmm.h": "c",
+        "pmm.h": "c",
+        "stdlib.h": "c"
+    }
+}

@@ -400,10 +400,9 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     pte_t *ptdir = NULL;
     pte_t *ptep = NULL;
     pdep = &pgdir[PDX(la)];
-    if (la == 0x100) {
-        cprintf("get_pte:pdep = %p, *pdep = %p\n", pdep, *pdep);
-    
-    }
+    // if (la == 0x100) {
+    //     cprintf("get_pte:pdep = %p, *pdep = %p\n", pdep, *pdep);
+    // }
     if (!(*pdep & PTE_P)) {
         if (create) {
             // 分配一个页，并修改页目录项

@@ -102,6 +102,19 @@ alloc_proc(void) {
      *       uint32_t flags;                             // Process flag
      *       char name[PROC_NAME_LEN + 1];               // Process name
      */
+        proc->state = PROC_UNINIT;
+        proc->pid = -1;
+        proc->runs = 0;
+        proc->kstack = 0;
+        proc->need_resched = 0;
+        proc->parent = NULL;
+        proc->mm = NULL;
+        // proc->context;
+        proc->tf = NULL;
+        proc->cr3 = boot_cr3;
+        proc->flags = 0;
+        // proc->name;
+        // set_proc_name(proc, "");
     }
     return proc;
 }
@@ -271,6 +284,7 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
         goto fork_out;
     }
     ret = -E_NO_MEM;
+    // hash_proc()
     //LAB4:EXERCISE2 YOUR CODE
     /*
      * Some Useful MACROs, Functions and DEFINEs, you can use them in below implementation.
@@ -288,7 +302,24 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
      *   proc_list:    the process set's list
      *   nr_process:   the number of process set
      */
+    proc = alloc_proc();
+    if (proc == NULL) {
+        goto fork_out;
+    }
+    proc->pid = get_pid();
+    if (setup_kstack(proc) != 0) {
+        goto fork_out;
+    }
+    copy_mm(clone_flags, proc);
+    copy_thread(proc, stack, tf);
+    hash_proc(proc);
+    // list_add(hash_list + pid_hashfn(proc->pid), &(proc->hash_link));
+    list_add(&proc_list, &(proc->hash_link));
+    wakeup_proc(proc);
 
+
+    ret = proc->pid;
+    // ret = 
     //    1. call alloc_proc to allocate a proc_struct
     //    2. call setup_kstack to allocate a kernel stack for child process
     //    3. call copy_mm to dup OR share mm according clone_flag
@@ -297,6 +328,7 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
     //    6. call wakeup_proc to make the new child process RUNNABLE
     //    7. set ret vaule using child proc's pid
 fork_out:
+    // cprintf("ret = %d\n", ret);
     return ret;
 
 bad_fork_cleanup_kstack:
@@ -349,15 +381,18 @@ proc_init(void) {
     current = idleproc;
 
     int pid = kernel_thread(init_main, "Hello world!!", 0);
+    cprintf("pid = %d\n", pid);
     if (pid <= 0) {
         panic("create init_main failed.\n");
     }
 
     initproc = find_proc(pid);
+    cprintf("initproc = %p\n", initproc);
     set_proc_name(initproc, "init");
-
+    cprintf("2\n");
     assert(idleproc != NULL && idleproc->pid == 0);
     assert(initproc != NULL && initproc->pid == 1);
+    cprintf("end of proc_init\n");
 }
 
 // cpu_idle - at the end of kern_init, the first kernel thread idleproc will do below works
