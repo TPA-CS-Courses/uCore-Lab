@@ -311,10 +311,11 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
         goto fork_out;
     }
     copy_mm(clone_flags, proc);
+    
     copy_thread(proc, stack, tf);
     hash_proc(proc);
     // list_add(hash_list + pid_hashfn(proc->pid), &(proc->hash_link));
-    list_add(&proc_list, &(proc->hash_link));
+    list_add(&proc_list, &(proc->list_link));
     wakeup_proc(proc);
 
 
