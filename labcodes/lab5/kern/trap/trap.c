@@ -62,8 +62,9 @@ idt_init(void) {
         SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);
     }
 	// set for switch from user to kernel
-    SETGATE(idt[T_SWITCH_TOK], 0, GD_KTEXT, __vectors[T_SWITCH_TOK], DPL_USER);
-	// load the IDT
+    // SETGATE(idt[T_SWITCH_TOK], 0, GD_KTEXT, __vectors[T_SWITCH_TOK], DPL_USER);
+	SETGATE(idt[T_SYSCALL], 1, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
+    // load the IDT
     lidt(&idt_pd);
 }
 
@@ -235,6 +236,7 @@ trap_dispatch(struct trapframe *tf) {
         ticks ++;
         if (ticks % TICK_NUM == 0) {
             print_ticks();
+            current->need_resched = 1;
         }
         break;
     case IRQ_OFFSET + IRQ_COM1:
