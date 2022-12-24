@@ -463,6 +463,7 @@ bad_fork_cleanup_proc:
 //   3. call scheduler to switch to other process
 int
 do_exit(int error_code) {
+    cprintf("---do_exit(): pid = %d\n", current->pid);
     if (current == idleproc) {
         panic("idleproc exit.\n");
     }
@@ -521,6 +522,7 @@ do_exit(int error_code) {
  */
 static int
 load_icode(unsigned char *binary, size_t size) {
+    cprintf("load_icode: pid = %d\n", current->pid);
     if (current->mm != NULL) {
         panic("load_icode: current->mm must be empty.\n");
     }
@@ -836,7 +838,7 @@ static int
 init_main(void *arg) {
     size_t nr_free_pages_store = nr_free_pages();
     size_t kernel_allocated_store = kallocated();
-
+    cprintf("init_main: pid = %d\n", current->pid);
     int pid = kernel_thread(user_main, NULL, 0);
     if (pid <= 0) {
         panic("create user_main failed.\n");

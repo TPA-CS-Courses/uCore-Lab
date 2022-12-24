@@ -16,6 +16,7 @@ main(void) {
         yield();
         yield();
         yield();
+        cprintf("child exit\n");
         exit(magic);
     }
     else {
@@ -27,7 +28,7 @@ main(void) {
     assert(waitpid(pid, &code) == 0 && code == magic);
     assert(waitpid(pid, &code) != 0 && wait() != 0);
     cprintf("waitpid %d ok.\n", pid);
-
+    // cprintf("current pid = %d\n", current->pid);
     cprintf("exit pass.\n");
     return 0;
 }
