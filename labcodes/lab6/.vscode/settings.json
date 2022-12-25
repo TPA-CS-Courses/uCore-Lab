@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.toml": "toml",
+        "default_sched_stride_c": "c"
+    }
+}

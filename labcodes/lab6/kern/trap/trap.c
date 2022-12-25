@@ -17,6 +17,7 @@
 #include <sync.h>
 #include <proc.h>
 
+
 #define TICK_NUM 100
 
 static void print_ticks() {
@@ -240,10 +241,13 @@ trap_dispatch(struct trapframe *tf) {
 	     * sched_class_proc_tick
          */
         ticks ++;
-        if (ticks % TICK_NUM == 0) {
-            // print_ticks();
-            current->need_resched = 1;
-        }
+        sched_class_proc_tick(current);
+        // sched
+        // if (ticks % TICK_NUM == 0) {
+        //     // print_ticks();
+        //     // current->need_resched = 1;
+        //     sched_class_proc_tick(current);
+        // }
         break;
     case IRQ_OFFSET + IRQ_COM1:
         c = cons_getc();
