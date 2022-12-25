@@ -51,6 +51,13 @@ _fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int
     //record the page access situlation
     /*LAB3 EXERCISE 2: YOUR CODE*/ 
     //(1)link the most recent arrival page at the back of the pra_list_head qeueue.
+    list_entry_t *le = head;
+    while(list_next(le) != head) {
+        le = list_next(le);
+    }
+    // le是最后一个
+    list_add(le, entry);
+    // cprintf("le = %p\n", le);
     return 0;
 }
 /*
@@ -67,7 +74,16 @@ _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick
      /*LAB3 EXERCISE 2: YOUR CODE*/ 
      //(1)  unlink the  earliest arrival page in front of pra_list_head qeueue
      //(2)  set the addr of addr of this page to ptr_page
-     return 0;
+    list_entry_t *le = list_next(head);
+    if (le == head) {
+        // 说明一个都没有
+        return 0;
+    }
+    list_del(le);
+    // struct Page *p = le2page(le, page_link);
+    *ptr_page = le2page(le, pra_page_link);
+    cprintf("ptr_page = %p\n", *ptr_page);
+    return 0;
 }
 
 static int

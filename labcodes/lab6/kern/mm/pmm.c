@@ -396,6 +396,47 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     }
     return NULL;          // (8) return page table entry
 #endif
+    pde_t *pdep = NULL;
+    pte_t *ptdir = NULL;
+    pte_t *ptep = NULL;
+    pdep = &pgdir[PDX(la)];
+    // if (la == 0x100) {
+    //     cprintf("get_pte:pdep = %p, *pdep = %p\n", pdep, *pdep);
+    // }
+    if (!(*pdep & PTE_P)) {
+        if (create) {
+            // 分配一个页，并修改页目录项
+            // *pdep = 
+            struct Page *page = alloc_page();
+            assert(page->flags == 0);
+            // page->flags = 0;
+            set_page_ref(page, 1);
+            uintptr_t pa = page2pa(page); 
+            // memset()
+            uintptr_t va = KADDR(pa);
+            ptdir = va;
+            *pdep = pa | PTE_USER;
+            memset(va, 0, PGSIZE);
+        } else {
+            return NULL;
+        }
+    } else {
+        ptdir = KADDR(PDE_ADDR(*pdep));
+    }
+    ptep = &ptdir[PTX(la)];
+    // cprintf("get_pte:ptep = %p, *ptep = %p\n", ptep, *ptep);
+    // if (!(*ptep & PTE_P)) {
+    //     if (create) {
+    //         struct Page *page = alloc_page();
+    //         set_page_ref(page, 1);
+    //         uintptr_t pa = page2pa(page); 
+    //         uintptr_t va = KADDR(pa);
+    //         *ptep = pa | PTE_USER;
+    //         memset(va, 0, PGSIZE);
+    //     } 
+    // }
+    // cprintf("get_pte:ptep = %p, *ptep = %p\n", ptep, *ptep);
+    return ptep;
 }
 
 //get_page - get related Page struct for linear address la using PDT pgdir
@@ -441,6 +482,27 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
                                   //(6) flush tlb
     }
 #endif
+    cprintf("page_remove_pte: ptep = %p, *ptep = %p\n", ptep, *ptep);
+    if (ptep != get_pte(pgdir, la, 0)) {
+        // cprintf("no why\n");
+        return;
+    }
+    if ((*ptep) & PTE_P) {
+        // page就是la所映射的物理页
+        struct Page *page = pte2page(*ptep);
+        page_ref_dec(page);
+        // cprintf("page_remove_pte: ref = %d\n", page->ref);
+        if (page->ref == 0) {
+            // 
+            // pmm_manager->free_pages(page, 1)
+            // free(page);
+            // cprintf("free page!\n");
+            free_page(page);
+            // tlb_invalidate(pgdir, la);
+            *ptep = 0;
+        }
+    }
+    tlb_invalidate(pgdir, la);
 }
 
 void
@@ -500,14 +562,14 @@ copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end, bool share) {
             if ((nptep = get_pte(to, start, 1)) == NULL) {
                 return -E_NO_MEM;
             }
-        uint32_t perm = (*ptep & PTE_USER);
-        //get page from ptep
-        struct Page *page = pte2page(*ptep);
-        // alloc a page for process B
-        struct Page *npage=alloc_page();
-        assert(page!=NULL);
-        assert(npage!=NULL);
-        int ret=0;
+            uint32_t perm = (*ptep & PTE_USER);
+            //get page from ptep
+            struct Page *page = pte2page(*ptep);
+            // alloc a page for process B
+            struct Page *npage=alloc_page();
+            assert(page!=NULL);
+            assert(npage!=NULL);
+            int ret=0;
         /* LAB5:EXERCISE2 YOUR CODE
          * replicate content of page to npage, build the map of phy addr of nage with the linear addr start
          *
@@ -522,7 +584,11 @@ copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end, bool share) {
          * (3) memory copy from src_kvaddr to dst_kvaddr, size is PGSIZE
          * (4) build the map of phy addr of  nage with the linear addr start
          */
-        assert(ret == 0);
+            char *src_kvaddr = page2kva(page);
+            char *dst_kvaddr = page2kva(npage);
+            memcpy(dst_kvaddr, src_kvaddr, PGSIZE);
+            ret = page_insert(to, npage, start, perm);
+            assert(ret == 0);
         }
         start += PGSIZE;
     } while (start != 0 && start < end);

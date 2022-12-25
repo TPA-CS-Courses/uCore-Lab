@@ -119,6 +119,21 @@ alloc_proc(void) {
      *     uint32_t lab6_stride;                       // FOR LAB6 ONLY: the current stride of the process
      *     uint32_t lab6_priority;                     // FOR LAB6 ONLY: the priority of process, set by lab6_set_priority(uint32_t)
      */
+        proc->state = PROC_UNINIT;
+        proc->pid = -1;
+        proc->runs = 0;
+        proc->kstack = 0;
+        proc->need_resched = 0;
+        proc->parent = NULL;
+        proc->mm = NULL;
+        // proc->context;
+        proc->tf = NULL;
+        proc->cr3 = boot_cr3;
+        proc->flags = 0;
+        proc->wait_state = 0;
+        proc->cptr = NULL;
+        proc->yptr = NULL;
+        proc->optr = NULL;
     }
     return proc;
 }
@@ -397,7 +412,35 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
      *   proc_list:    the process set's list
      *   nr_process:   the number of process set
      */
+    proc = alloc_proc();
+    if (proc == NULL) {
+        goto fork_out;
+    }
+    // proc->wait_state 
+    proc->parent = current;
+    assert(current->wait_state == 0);
+    // proc->pid = get_pid();
+    if (setup_kstack(proc) != 0) {
+        goto bad_fork_cleanup_proc;
+    }
+    if (copy_mm(clone_flags, proc) != 0){
+        goto bad_fork_cleanup_kstack;
+    }
+    
+    copy_thread(proc, stack, tf);
+    bool intr_flag;
+    local_intr_save(intr_flag);
+    {
+        proc->pid = get_pid();
+        hash_proc(proc);
+        // list_add(hash_list + pid_hashfn(proc->pid), &(proc->hash_link));
+        // list_add(&proc_list, &(proc->list_link));
+        set_links(proc);
+    }
+    local_intr_restore(intr_flag);
+    wakeup_proc(proc);
 
+    ret = proc->pid;
     //    1. call alloc_proc to allocate a proc_struct
     //    2. call setup_kstack to allocate a kernel stack for child process
     //    3. call copy_mm to dup OR share mm according clone_flag
@@ -612,6 +655,11 @@ load_icode(unsigned char *binary, size_t size) {
      *          tf_eip should be the entry point of this binary program (elf->e_entry)
      *          tf_eflags should be set to enable computer to produce Interrupt
      */
+    tf->tf_cs = USER_CS;
+    tf->tf_ds = tf->tf_es = tf->tf_ss = USER_DS;
+    tf->tf_esp = USTACKTOP;
+    tf->tf_eip = elf->e_entry;    
+    tf->tf_eflags |= FL_IF;
     ret = 0;
 out:
     return ret;
